@@ -101,8 +101,5 @@ Ctrl+C останавливает поиск с сохранением; повт
 [Архитектура](docs/architecture.md) · [Производительность](docs/performance.md) ·
 [Проверки проекта](docs/implementation-plan.md) · [Пример конфига](config.example.toml)
 
-Релизы собираются автоматически из `main` после проверок Linux и Windows.
-Версия задаётся в `Cargo.toml`; первая публичная версия — `v1.0.0`.
-
 Лицензия: [AGPL-3.0-only](LICENSE-AGPL.txt).
 [Уведомления о стороннем коде](THIRD-PARTY-NOTICES.md).
