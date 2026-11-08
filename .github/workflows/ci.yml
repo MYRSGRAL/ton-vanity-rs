@@ -1,27 +1,33 @@
-name: Проверки Rust
+name: Проверки и релизы
 
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
-    name: Rust · ${{ matrix.os }}
+    name: Rust · ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux-x86_64
+          - os: windows-latest
+            platform: windows-x86_64
     env:
-      CARGO_TARGET_DIR: ${{ runner.temp }}/brut-wallet-target
+      CARGO_TARGET_DIR: ${{ github.workspace }}/../brut-wallet-target
     steps:
       - name: Получить исходники
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -32,13 +38,117 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt, clippy
+      - name: Настроить Python для упаковки
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
       - name: Проверить форматирование
         run: cargo fmt --all --check
       - name: Проверить Clippy
         run: cargo clippy --all-targets --locked -- -D warnings
       - name: Выполнить тесты без GPU
         run: cargo test --all --locked
+      - name: Проверить упаковку архивов
+        run: python -m unittest discover -s scripts -p "test_*.py" -v
       - name: Собрать release
         run: cargo build --release --locked
       - name: Проверить CPU на публичных векторах
         run: cargo run --release --locked -- check
+      - name: Подготовить архив
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: python scripts/package_release.py --platform ${{ matrix.platform }} --output dist
+      - name: Сохранить архив до публикации
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ matrix.platform }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Опубликовать релиз
+    needs: check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Получить исходники
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Определить версию релиза
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: python
+        run: |
+          import json
+          import os
+          import re
+          import subprocess
+          import tomllib
+          from pathlib import Path
+
+          version = tomllib.loads(Path("Cargo.toml").read_text())["package"]["version"]
+          if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
+              raise SystemExit("Релиз требует версию вида 1.0.0 в Cargo.toml")
+          tag = f"v{version}"
+          repository = os.environ["GITHUB_REPOSITORY"]
+          existing = subprocess.run(
+              ["gh", "api", f"repos/{repository}/releases/tags/{tag}"],
+              capture_output=True, text=True, check=False,
+          )
+          if existing.returncode == 0:
+              if json.loads(existing.stdout).get("draft"):
+                  raise SystemExit(f"Найден незавершённый draft {tag}; проверьте его перед публикацией")
+              publish = False
+              print(f"Релиз {tag} уже существует. Для нового релиза повысьте версию в Cargo.toml.")
+          else:
+              if str(json.loads(existing.stdout).get("status")) != "404":
+                  raise SystemExit(existing.stderr)
+              refs = subprocess.check_output(
+                  ["git", "ls-remote", "--tags", "origin", f"refs/tags/{tag}", f"refs/tags/{tag}^{{}}"],
+                  text=True,
+              )
+              commits = dict(line.split()[::-1] for line in refs.splitlines())
+              target = commits.get(f"refs/tags/{tag}^{{}}", commits.get(f"refs/tags/{tag}"))
+              if target and target != os.environ["GITHUB_SHA"]:
+                  raise SystemExit(f"Тег {tag} уже указывает на другой commit; повысьте версию")
+              publish = True
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
+              output.write(f"tag={tag}\npublish={str(publish).lower()}\n")
+      - name: Получить проверенные архивы
+        if: steps.version.outputs.publish == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+      - name: Опубликовать архивы и контрольные суммы
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum --check ./*.sha256)
+          cat dist/*.sha256 > dist/SHA256SUMS
+          cat > release-notes.md <<'NOTES'
+          Генератор собственных TON W5-кошельков с выбранным окончанием адреса.
+          Работает локально на CPU или GPU через OpenCL, сохраняет прогресс поиска.
+
+          - Linux x86_64: архив `.tar.gz`.
+          - Windows x86_64: архив `.zip`.
+          - `SHA256SUMS`: контрольные суммы архивов.
+
+          Распакуйте архив в приватную папку, создайте `config.toml` по примеру
+          и запустите `brut-wallet check`, затем `brut-wallet search --cpu` или
+          `brut-wallet search` для GPU. Инструкция находится в README внутри архива.
+          NOTES
+          gh release create "$RELEASE_TAG" dist/*.tar.gz dist/*.zip dist/SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "TON Vanity $RELEASE_TAG" --notes-file release-notes.md --latest

@@ -19,6 +19,9 @@
 
 ## Установка
 
+Готовые сборки для Linux и Windows доступны в [Releases](https://github.com/MYRSGRAL/ton-vanity-rs/releases/latest).
+Скачай архив своей платформы и распакуй в приватную папку.
+
 Для сборки нужны Rust 1.89+ и системный линкер. Для GPU — драйвер с поддержкой OpenCL.
 Python, Node.js и CUDA Toolkit для запуска не требуются.
 
@@ -97,6 +100,9 @@ Ctrl+C останавливает поиск с сохранением; повт
 
 [Архитектура](docs/architecture.md) · [Производительность](docs/performance.md) ·
 [Проверки проекта](docs/implementation-plan.md) · [Пример конфига](config.example.toml)
+
+Релизы собираются автоматически из `main` после проверок Linux и Windows.
+Версия задаётся в `Cargo.toml`; первая публичная версия — `v1.0.0`.
 
 Лицензия: [AGPL-3.0-only](LICENSE-AGPL.txt).
 [Уведомления о стороннем коде](THIRD-PARTY-NOTICES.md).
