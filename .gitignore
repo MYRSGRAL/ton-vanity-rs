@@ -1,0 +1,17 @@
+/target/
+/artifacts/
+/work/
+config.toml
+session.toml
+session.lock
+master-key.bin
+/run-v2/
+wallets.txt
+session-v*.backup.toml
+wallet-*.toml
+positive-balances.toml
+positive-balances.lock
+/sessions/
+/dist/
+.env
+.env.*

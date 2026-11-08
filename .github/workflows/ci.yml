@@ -1,0 +1,44 @@
+name: Проверки Rust
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Rust · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      CARGO_TARGET_DIR: ${{ runner.temp }}/brut-wallet-target
+    steps:
+      - name: Получить исходники
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Настроить Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Проверить форматирование
+        run: cargo fmt --all --check
+      - name: Проверить Clippy
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - name: Выполнить тесты без GPU
+        run: cargo test --all --locked
+      - name: Собрать release
+        run: cargo build --release --locked
+      - name: Проверить CPU на публичных векторах
+        run: cargo run --release --locked -- check

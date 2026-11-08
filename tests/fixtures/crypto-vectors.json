@@ -1,0 +1,18 @@
+[
+  {
+    "entropy": "0000000000000000000000000000000000000000000000000000000000000000",
+    "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art",
+    "seed": "408b285c123836004f4b8842c89324c1f01382450c0d439af345ba7fc49acf705489c6fc77dbd4e3dc1dd8cc6bc9f043db8ada1e243c4a0eafb290d399480840",
+    "private_key": "618373f1049ac823d23c406ac4155bef631d6b095b18f974abc4065c0bf7b96b",
+    "public_key": "c6d2c947e552974c9f739fd7a02652519b8eef8cb9eef7867ac2e8f85777f244",
+    "address": "UQC020bHeiUqqyw8BB4EttblmRidKkT_hnINJ-8rZCP0L1Dw"
+  },
+  {
+    "entropy": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "mnemonic": "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo vote",
+    "seed": "e28a37058c7f5112ec9e16a3437cf363a2572d70b6ceb3b6965447623d620f14d06bb321a26b33ec15fcd84a3b5ddfd5520e230c924c87aaa0d559749e044fef",
+    "private_key": "13553dca5158d76b1357a8d05d75cab26321412a9a004ffffc12a19d43554c7b",
+    "public_key": "27dd967949fa279d0b51eff1c55a5e142e7a1b9e308d7bcfac283b117ed96856",
+    "address": "UQAwdPow8I_FK6qBl1mbQkKabscUp4HoMGLFo9kl2VD74bWz"
+  }
+]

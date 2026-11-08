@@ -1,0 +1,5 @@
+schema_version = 1
+target_suffix = "myrsgraal"
+device_index = 0
+batch_size = 65536
+pipeline_depth = 2
